@@ -1,0 +1,651 @@
+---
+title: "Paleoclimate Change and Biome Predictions"
+author: "Erin Keleske"
+date: "1/3/2018"
+output: pdf_document
+---
+
+Last updated: 01/5/18
+
+Note: 
+This markdown is the early stages of what is intended to be a publically accessible and reproducible version of my methods and results. Things that are definitely still a work in progress are marked as such! 
+
+# Start-up 
+
+Load required packages 
+```{r setup, include=FALSE}
+library(akima)
+library(dismo)
+library(dplyr)
+library(gdalUtils)
+library(ggjoy)
+library(ggplot2)
+library(jsonlite)
+library(lattice)
+library(mapdata)
+library(maps)
+library(maptools)
+library(matrixStats)
+library(MASS)
+library(mosaic)
+library(mosaicData)
+library(randomForest)
+library(raster)
+library(rasterVis)
+library(RCurl)
+library(readr)
+require(repmis)
+library(rgdal)
+library(rgeos)
+library(rpart)
+library(rpart.plot)
+library(SDMTools)
+library(sp)
+library(spatial.tools)
+library(yaImpute)
+library(zoo)
+```
+
+[In the future, I will insert code for a color scheme here to make the results easier to follow, but haven't found the best way to do that yet].
+
+# Downloading data 
+
+Paleodata is from two sources, both found on the GitHub repository. Data provided by the lab of Dr. David Beerling is provided in .csv format and show monthly predicted temperature and precipitation by lat/lon coordinates. 
+
+Loading initial Beerling data
+```{r error=FALSE warning=FALSE}
+### Import initial temperature datasets
+pew.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pew_tmp.csv")
+tee.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/tee_tmp.csv")
+mco.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mco_tmp.csv")
+mce.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mce_tmp.csv")
+pwe.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pwe_tmp.csv")
+pir.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pir_tmp.csv")
+
+### Import initial precipitation datasets
+pew.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pew_prc.csv")
+tee.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/tee_prc.csv")
+mco.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mco_prc.csv")
+mce.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mce_prc.csv")
+pwe.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pwe_prc.csv")
+pir.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pir_prc.csv")
+```
+
+Paleodata from the WorldClim project are provided from the site in individuals rasters for each of 19 different climate variables. Data.frames provided on Github have been condensed and modified in the following ways: 
+    -Variables number 1-11 are provided as the original value *10 and thus have been divided by 10. 
+    -The resolution has been lowered to match that of the Beerling datasets. 
+    -Two models are averaged out, the CCSM4 model and the MPI-ESM-P model. 
+    
+The data are provided in the same format as the Beerling data. 
+
+Loading initial WorldClim data
+```{r error=FALSE warning=FALSE}
+lgm <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/lgm.csv")
+hol <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/hol.csv")
+```
+
+Current climate data and 50-year future predictions based on RCP8.5 scenarios were also downloaded from WorldClim with variables 1-11 divided by 11. 
+
+Loading initial WorldClim data
+```{r error=FALSE warning=FALSE}
+cur <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/cur.csv")
+fut <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/fut.csv")
+```
+
+Here is a chronological list of all datasets and their approximate times and atmospheric carbon levels: 
+
+    PEW = Peak Eocene Warmth (~55 mya)(1120 ppm CO2)
+    TEE = Terminal Eocene Event (~33 mya)(560 ppm CO2)
+    MCO = Mid-Miocene Climatic Optimum (15 mya)(400 ppm CO2)
+    MCE = Miocene Cooling Event (~10 mya)(280 ppm CO2)
+    PWE = Pliocene Warming Event (~3 mya)(560 ppm CO2)
+    LGM = Last Glacial Maximum (~22,000 ya)(190 ppm CO2)
+    HOL = Mid-Holocene (~6,000 ya)(280 ppm CO2)
+    PIR = Pre-Industrial Revolution (~260 ya)(280 ppm CO2)
+    CUR = Current (0 ya)(405 ppm CO2)
+    FUT = Future, (50 years from now)(755 ppm CO2)
+
+# Calculating WorldClim Variables 
+
+The WorldClim data are presented via 19 bioclimatic variables, listed below for reference. 
+
+    BIO1 = Annual Mean Temperature
+    BIO2 = Mean Diurnal Range (Mean of monthly(max temp - min temp))
+    BIO3 = Isothermality (BIO2/BIO7)(*100)
+    BIO4 = Temperature Seasonality (standard deviation *100)
+    BIO5 = Max Temperature of Warmest Month 
+    BIO6 = Min Temperature of Coldest Month
+    BIO7 = Temperature Annual Range (BIO5-BIO6)
+    BIO8 = Mean Temperature of Wettest Quarter
+    BIO9 = Mean Temperature of Driest Quarter
+    BIO10 = Mean Temperature of Warmest Quarter
+    BIO11 = Mean Temperature of Coldest Quarter
+    BIO12 = Annual Precipitation 
+    BIO13 = Precipitation of Wettest Month
+    BIO14 = Precipitation of Driest Month
+    BIO15 = Precipitation Seasonality (Coefficient of Variation)
+    BIO16 = Precipitation of Wettest Quarter
+    BIO17 = Precipitation of Driest Quarter
+    BIO18 = Precipitation of Warmest Quarter
+    BIO19 = Precipitation of Coldest Quarter 
+    
+The function bioclim.var takes two data.frames both with lat/lon coordinates, one with corresponding monthly temperatures in degrees Celsius and one with monthly precipitation in mm, and outputs a data.frame with the coordinates and the 19 Bioclim variables. 
+
+Current datasets are in lat/lon coordinates but later calculations require coordinates measured in kilometer distance from geographic center [0,0]. Function km.coord makes this translation. 
+
+Source functions
+```{r error=FALSE warning=FALSE}
+bioclim.var <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/bioclim.var.r", ssl.verifypeer=FALSE)
+eval(parse(text="bioclim.var"))
+source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/bioclim.var.r")
+
+km.coord <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/km.coord.r", ssl.verifypeer=FALSE)
+eval(parse(text="km.coord"))
+source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/km.coord.r")
+```
+
+Calculate the 19 Bioclim variables for the Beerling datasets, convert to km coordinates and subset all data.sets to the same longitudinal maximum and minimums. 
+```{r}
+pew <- bioclim.var(pew.tmp, pew.prc)
+pew <- subset(pew, y < 81.25)
+pew <- subset(pew, y > -56.25)
+pew <- km.coord(pew)
+
+tee <- bioclim.var(tee.tmp, tee.prc)
+tee <- subset(tee, y < 81.25)
+tee <- subset(tee, y > -56.25)
+tee <- km.coord(tee)
+
+mco <- bioclim.var(mco.tmp, mco.prc)
+mco <- subset(mco, y < 81.25)
+mco <- subset(mco, y > -56.25)
+mco <- km.coord(mco)
+
+mce <- bioclim.var(mce.tmp, mce.prc)
+mce <- subset(mce, y < 81.25)
+mce <- subset(mce, y > -56.25)
+mce <- km.coord(mce)
+
+pwe <- bioclim.var(pwe.tmp, pwe.prc)
+pwe <- subset(pwe, y < 81.25)
+pwe <- subset(pwe, y > -56.25)
+pwe <- km.coord(pwe)
+
+lgm <- subset(lgm, y < 81.25)
+lgm <- subset(lgm, y > -56.25)
+lgm <- km.coord(lgm)
+
+hol <- subset(hol, y < 81.25)
+hol <- subset(hol, y > -56.25)
+hol <- km.coord(hol)
+
+pir <- bioclim.var(pir.tmp, pir.prc)
+pir <- subset(pir, y < 81.25)
+pir <- subset(pir, y > -56.25)
+pir <- km.coord(pir)
+
+cur <- subset(cur, y < 81.25)
+cur <- subset(cur, y > -56.25)
+cur <- km.coord(cur)
+
+fut <- subset(fut, y < 81.25)
+fut <- subset(fut, y > -56.25)
+fut <- km.coord(fut)
+```
+
+# Visualizing climate space 
+
+```{r}
+plot(pew$bio1~pew$bio12, lwd=2, xlab=("Annual Precipitation"), ylab="Mean Annual Temperature", main="Peak Eocene Warmth (55 mya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(tee$bio1~tee$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Terminal Eocene Event (33 mya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(mco$bio1~mco$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Mid-Miocene Climatic Optimum, (15 mya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(mce$bio1~mce$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Miocene Cooling Event (10 mya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(pwe$bio1~pwe$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Pliocene Warming Event (3 mya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(lgm$bio1~lgm$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Last Glacial Maximum (22,000 ya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(hol$bio1~hol$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Temperature", main="Mid-Holocene (6,000 ya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(pir$bio1~pir$bio12, lwd=2, xlab="Annual Precipitation", ylab="Mean Annual Precipitation", main="Pre Industrial Revolution (257 ya)", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(cur$bio1~cur$bio12, xlab="Annual Precipitation", ylab="Mean Annual Precipitation", main="Today", xlim=c(0,6000), ylim=c(-40,40))
+
+plot(fut$bio1~fut$bio12, xlab="Annual Precipitation", ylab="Mean Annual Precipitation", main="Predicted, 2067", xlim=c(0,6000), ylim=c(-40,40))
+```
+
+# Univariate Spatial Distance
+
+Function cc.dist gives output as a data.frame with columns of x-coordinates, y-coordinates, climate change distance, log(distance) x100, climate change velocity, and log(velocity) x100, as modified from R code from Hamann et al., 2015. This function uses one climatic variable, mean annual temperature (Bio1) but can be modified to use any variable. 
+
+This function requires a user-defined threshold for what constitutes a climate match (still deciding what's best to use). 
+
+Source function
+```{r}
+cc.dist <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/cc.dist.r", ssl.verifypeer=FALSE)
+eval(parse(text="cc.dist"))
+source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/cc.dist.r")
+```
+
+Since almost all of the dataframes have different coordinates, we first must resample the smaller dataset using the coordinates from the larger dataset for most pairings. This resampling requires the data in raster format. 
+
+```{r error=FALSE warning=FALSE}
+pew.r <- rasterFromXYZ(as.data.frame(pew)[, c("x", "y", "bio1")]) 
+tee.r <- rasterFromXYZ(as.data.frame(tee)[, c("x", "y", "bio1")])
+mco.r <- rasterFromXYZ(as.data.frame(mco)[, c("x", "y", "bio1")])
+mce.r <- rasterFromXYZ(as.data.frame(mce)[, c("x", "y", "bio1")])
+pwe.r <- rasterFromXYZ(as.data.frame(pwe)[, c("x", "y", "bio1")])
+lgm.r <- rasterFromXYZ(as.data.frame(lgm)[, c("x", "y", "bio1")])
+hol.r <- rasterFromXYZ(as.data.frame(hol)[, c("x", "y", "bio1")])
+pir.r <- rasterFromXYZ(as.data.frame(pir)[, c("x", "y", "bio1")])
+cur.r <- rasterFromXYZ(as.data.frame(cur)[, c("x", "y", "bio1")])
+fut.r <- rasterFromXYZ(as.data.frame(fut)[, c("x", "y", "bio1")])
+```
+
+Due to the inconsistency in time between periods (some time jumps are 22,000,000 years, others are 50 years), we mapped climate distances instead of climate velocity. 
+
+Velocity would show the speed at which you would need to move to maintain the same climate (in this case, just temperature). Climate change distance removes the temporal component and just shows kilometers you would need to move to find an analogue climate. 
+
+The current color bar shows log(km)*100. (I'm looking for a way to better to show these maps, preferably with consistent color bars between maps). Black spaces represent regions that have no analogue climates in the later time period. No-analogue climates are determined by the user-defined climate threshold discussed above. 
+
+Next steps will be to determine how much the threshold changes the amount of no-analogue space identified. 
+
+#### Peak Eocene Warmth - Terminal Eocene Event
+```{r error=FALSE warning=FALSE}
+# Calculate univariate spatial distances and velocities. 
+pew.tee <- cc.dist(pew, tee, thresh=0.25, years=22000000)
+
+# Locate no-analogue climates
+pew.tee.na <- pew.tee[is.na(pew.tee$mean),]
+
+# Plot
+pew.tee.r <- subset(pew.tee, select = -c(id, mean, Dist, logSpeed, Speed))
+pew.tee.r <- rasterFromXYZ(as.data.frame(pew.tee.r)[, c("x", "y", "logDist")]) 
+plot(pew.tee.r, main="Peak Eocene Warmth - Terminal Eocene Event", colNA="lightblue") +
+  points(pew.tee.na$x, pew.tee.na$y, pch=15)
+```
+
+#### Terminal Eocene Event - Mid-Miocene Climatic Optimum
+```{r error=FALSE warning=FALSE}
+# Resample
+sm <- tee.r
+bg <- mco.r 
+
+xy <- data.frame(xyFromCell(bg, 1:ncell(bg)))
+new = data.frame(c(xy, data.frame(extract(sm, xy))))
+names(new) <- c("x", "y", "bio1")
+
+tee_mco.xy <- new
+
+# Calculate univariate spatial distances and velocities. 
+tee.mco <- cc.dist(tee_mco.xy, mco, bio1, thresh=0.25, years=18000000)
+
+# Locate no-analogue climates
+tee.mco.na <- tee.mco[is.na(tee.mco$mean),]
+
+# Plot
+tee.mco.r <- subset(tee.mco, select = -c(id, mean, Dist, Speed, logSpeed))
+tee.mco.r <- rasterFromXYZ(as.data.frame(tee.mco.r)[, c("x", "y", "logDist")]) 
+plot(tee.mco.r, main="Terminal Eocene Event - Mid-Miocene Climatic Optimum", colNA="lightblue") +
+  points(tee.mco.na$x, tee.mco.na$y, pch=15)
+``` 
+
+#### Mid-Miocene Climatic Optimum - Late Miocene Cooling Event
+```{r error=FALSE warning=FALSE}
+# Resample 
+sm <- mce.r
+bg <- mco.r 
+
+xy <- data.frame(xyFromCell(sm, 1:ncell(sm)))
+new = data.frame(c(xy, data.frame(extract(bg, xy))))
+names(new) <- c("x", "y", "bio1")
+
+mco_mce.xy <- new
+
+# Calculate univariate spatial distances and velocities. 
+mco.mce <- cc.dist(mco_mce.xy, mce, bio1, thresh=0.25, years=5000000)
+
+# Locate no-analogue climates
+mco.mce.na <- mco.mce[is.na(mco.mce$mean),]
+
+# Plot
+mco.mce.r <- subset(mco.mce, select = -c(id, mean, Dist, Speed, logSpeed))
+mco.mce.r <- rasterFromXYZ(as.data.frame(mco.mce.r)[, c("x", "y", "logDist")]) 
+plot(mco.mce.r, main="Mid-Miocene Climatic Optimum - Late Miocene Cooling Event", colNA="lightblue") +
+  points(mco.mce.na$x, mco.mce.na$y, pch=15)
+```
+
+#### Late Miocene Cooling Event - Mid-Pliocene Warming Event
+```{r error=FALSE warning=FALSE}
+# Resample
+sm <- pwe.r
+bg <- mce.r 
+
+xy <- data.frame(xyFromCell(sm, 1:ncell(sm)))
+new = data.frame(c(xy, data.frame(extract(bg, xy))))
+names(new) <- c("x", "y", "bio1")
+
+mce_pwe.xy <- new
+
+# Calculate univariate spatial distances and velocities. 
+mce.pwe <- cc.dist(mce_pwe.xy, pwe, bio1, thresh=0.25, years=7000000)
+
+# Locate no-analogue climates
+mce.pwe.na <- mce.pwe[is.na(mce.pwe$mean),]
+
+# Plot
+mce.pwe.r <- subset(mce.pwe, select = -c(id, mean, Dist, Speed, logSpeed))
+mce.pwe.r <- rasterFromXYZ(as.data.frame(mce.pwe.r)[, c("x", "y", "logDist")]) 
+plot(mce.pwe.r, main="Late Miocene Cooling Event- Mid-Pliocene Warming Event", colNA="lightblue") +
+  points(mce.pwe.na$x, mce.pwe.na$y, pch=15)
+```
+
+#### Mid-Pliocene Warming Event - Last Glacial Maximum
+```{r error=FALSE warning=FALSE}
+# Resample
+sm <- pwe.r
+bg <- lgm.r
+
+bg = crop(bg, sm)
+bg <- raster::resample(bg, sm, method="ngb")
+
+xy <- data.frame(xyFromCell(bg, 1:ncell(bg)))
+new = data.frame(c(xy, data.frame(extract(sm, xy))))
+names(new) <- c("x", "y", "bio1")
+
+pwe_lgm.xy <- new
+lgm <- as.data.frame(bg, row.names=NULL, OPTIONAL=FALSE, xy=TRUE )
+names(lgm) <- c("x", "y", "bio1")
+
+# Calculate univariate spatial distances and velocities.
+pwe.lgm <- cc.dist(pwe_lgm.xy, lgm, bio1, thresh=0.25, years=2978000)
+
+# Locate no-analogue climates
+pwe.lgm.na <- pwe.lgm[is.na(pwe.lgm$mean),]
+
+# Plot
+pwe.lgm.r <- subset(pwe.lgm, select = -c(id, mean, Dist, Speed, logSpeed))
+pwe.lgm.r <- rasterFromXYZ(as.data.frame(pwe.lgm.r)[, c("x", "y", "logDist")]) 
+plot(pwe.lgm.r, main="Mid-Pliocene Warming Event - Last Glacial Maximum", colNA="lightblue") +
+  points(pwe.lgm.na$x, pwe.lgm.na$y, pch=15)
+```
+
+#### Last Glacial Maximum - Mid-Holocene
+```{r error=FALSE warning=FALSE}
+# Calculate univariate spatial distances and velocities. 
+lgm.hol <- cc.dist(lgm, hol, bio1, thresh=0.25, years=16000)
+
+# Locate no-analogue climates
+lgm.hol.na <- lgm.hol[is.na(lgm.hol$mean),]
+
+# Plot
+lgm.hol.r <- subset(lgm.hol, select = -c(id, mean, logSpeed, Speed, Dist))
+lgm.hol.r <- rasterFromXYZ(as.data.frame(lgm.hol.r)[, c("x", "y", "logDist")]) 
+plot(lgm.hol.r, main="Last Glacial Maximum - Mid-Holocene", colNA="lightblue") +
+  points(lgm.hol.na$x, lgm.hol.na$y, pch=15)
+```
+(Some of the maps including WorldClim data get a little messy because the raster size I'm using is much larger than the islands included in their data). 
+
+#### Mid-Holocene - Pre-Industrial Revolution
+```{r error=FALSE warning=FALSE}
+# Resample 
+sm <- pir.r
+bg <- hol.r 
+
+xy <- data.frame(xyFromCell(sm, 1:ncell(sm)))
+new = data.frame(c(xy, data.frame(extract(bg, xy))))
+names(new) <- c("x", "y", "bio1")
+
+hol_pir.xy <- new
+
+# Calculate univariate spatial distances and velocities.
+hol.pir <- cc.dist(hol_pir.xy, pir, bio1, thresh=0.25, years=5743)
+
+# Locate no-analogue climates
+hol.pir.na <- hol.pir[is.na(hol.pir$mean),]
+
+# Plot
+hol.pir.r <- subset(hol.pir, select = -c(id, mean, Dist, Speed, logSpeed))
+hol.pir.r <- rasterFromXYZ(as.data.frame(hol.pir.r)[, c("x", "y", "logDist")]) 
+plot(hol.pir.r, main="Mid-Holocene - Pre-Industrial Revolution", colNA="lightblue") +
+  points(hol.pir.na$x, hol.pir.na$y, pch=15)
+```
+
+#### Pre-Industrial Revolution - Current
+```{r error=FALSE warning=FALSE}
+# Resample
+sm <- pir.r
+bg <- cur.r 
+
+bg = crop(bg, sm)
+bg <- raster::resample(bg, sm, method="ngb")
+
+xy <- data.frame(xyFromCell(bg, 1:ncell(bg)))
+new = data.frame(c(xy, data.frame(extract(sm, xy))))
+names(new) <- c("x", "y", "bio1")
+
+pir_cur.xy <- new
+
+cur <- as.data.frame(bg, row.names=NULL, OPTINAL=FALSE, xy=TRUE )
+names(cur) <- c("x", "y", "bio1")
+
+# Calculate univariate spatial distances and velocities.
+pir.cur <- cc.dist(pir_cur.xy, cur, bio1, thresh=0.25, years=257)
+
+# Locate no-analogue climates
+pir.cur.na <- pir.cur[is.na(pir.cur$mean),]
+
+# Plot
+pir.cur.r <- subset(pir.cur, select = -c(id, mean, Dist, Speed, logSpeed))
+pir.cur.r <- rasterFromXYZ(as.data.frame(pir.cur.r)[, c("x", "y", "logDist")]) 
+plot(pir.cur.r, main="Pre-Industrial Revolutoin - Current", colNA="lightblue") +
+  points(pir.cur.na$x, pir.cur.na$y, pch=15)
+```
+
+#### Current - Future (50 year projection)
+```{r error=FALSE warning=FALSE}
+# Resample
+sm <- cur.r
+bg <- fut.r
+
+bg = crop(bg, sm)
+bg <- raster::resample(bg, sm, method="ngb")
+
+xy <- data.frame(xyFromCell(bg, 1:ncell(bg)))
+new = data.frame(c(xy, data.frame(extract(sm, xy))))
+names(new) <- c("x", "y", "bio1")
+
+cur_fut.xy <- new
+
+fut <- as.data.frame(bg, row.names=NULL, OPTINAL=FALSE, xy=TRUE )
+names(fut) <- c("x", "y", "bio1")
+
+# Calculate univariate spatial distances and velocities.
+cur.fut <- cc.dist(cur_fut.xy, fut, bio1, thresh=0.25, years=50)
+
+# Locate no-analogue climates
+cur.fut.na <- cur.fut[is.na(cur.fut$mean),]
+
+# Plot
+cur.fut.r <- subset(cur.fut, select = -c(id, mean, Dist, Speed, logSpeed))
+cur.fut.r <- rasterFromXYZ(as.data.frame(cur.fut.r)[, c("x", "y", "logDist")]) 
+plot(cur.fut.r, main="Current - Future (50 year projection)", colNA="lightblue") +
+  points(cur.fut.na$x, cur.fut.na$y, pch=15)
+```
+
+# Multivariate Velocity 
+
+Hamann et al., 2015 also provided code for multivariate velocity which I am in the process of modifying to use a PCA of the 19 bioclim variables. 
+
+** Still working on this section-- I've been struggling to get the proper PCA output to put into the function. 
+
+But here is the function so far: 
+```{r}
+mult.dist <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/mult.dist.r", ssl.verifypeer=FALSE)
+eval(parse(text="mult.dist"))
+source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/mult.dist.r")
+```
+
+And here's what I was doing to make the PCAs: 
+```{r}
+log.pew <- (pew[,3:21])
+pew.pca <- prcomp(log.pew, 
+                  center = TRUE, 
+                  scale. = TRUE)
+
+log.tee <- (tee[,3:21])
+tee.pca <- prcomp(log.tee, 
+                  center = TRUE,
+                  scale. = TRUE)
+
+plot(pew.pca, type="l")
+plot(tee.pca, type="l")
+
+summary(pew.pca)
+summary(tee.pca)
+
+pew.pca <- PCAgrid(log.pew, k=6)
+tee.pca <- PCAgrid(log.tee, k=6)
+
+```
+
+I was attempting to do a PCA between the PEW and TEE time periods so I did everything twice. 
+
+# Biome Predictions
+
+Using current day global bioclimatic variables and the World Wildlife Funds global biome classifications, we predicted potential biome analogues for the past time periods. However, due to the large degree of uncertainty, we grouped some of the biomes together into 6 groups. 
+
+    Category 1= Tropical and subtropical moist and dry broadleaf forests, tropical and subtropical coniferous forests. 
+    Category 2 = Temperate broadleaf and mixed forests, temperate conifer forests, boreal forests and taiga, montane grasslands and shrublands, and Mediterranean forests, woodlands, and scrub. 
+    Category 3 = Tundra
+    Category Four = Temperate grasslands, savannas and shrublands, deserts and xeric shrublands 
+    Category Five = Tropical and subtropical grasslands, savannas, and shrublands and flooded grasslands and savannas
+    Category Six = Mangroves
+    
+Ideally mangroves would be added to another category at some point. These divisions were decided after looking at a confusion matrix to see which biomes are often mispredicted or confused and general similarities between the climate type. 
+
+```{r}
+# download data.frame with biomes and associated climate variables by x and y variables 
+wwfclim <- source_data("https://github.com/KerkhoffLab/climate-velocity/blob/master/wwfclim.pred.csv?raw=true")
+```
+
+## Random Forest
+(this might take a couple minutes)
+
+```{r}
+set.seed(500) 
+wwffit <- randomForest(as.factor(BIOME) ~ bio1 + bio2 + bio3 + bio4 + bio5 + bio6 + bio7 + bio8 + bio9 + bio10 + bio11 + bio12 + bio13 + bio14 + bio15 + bio16 + bio17 + bio18 + bio19, 
+                         data=wwfclim,
+                         importance=TRUE, 
+                         ntree=100)
+
+varImpPlot(wwffit)
+```
+
+## Biome Predictions, WWF Data
+
+Define colors (definitely need to find a better way to do this). 
+
+```{r}
+# biome.col is used for Beerling data and biome.col2 is used for WorldClim data which tend to include Mangroves-- otherwise the colors get thrown off. 
+
+biome.col <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey")
+biome.col2 <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey", "darkorange")
+```
+
+Current
+```{r}
+prediction.wwf <- predict(wwffit, cur)
+cur.wwf.pred <- data.frame(x=cur$x, y=cur$y, biome=prediction.wwf)
+
+cur.wwf.pred.r <- rasterFromXYZ(as.data.frame(cur.wwf.pred)[, c("x", "y", "biome")]) 
+plot(cur.wwf.pred.r, main="Current, WWF Biome Divisions", col=biome.col2)
+```
+
+Peak Eocene Warmth 
+```{r}
+prediction.wwf <- predict(wwffit, pew)
+pew.wwf.pred <- data.frame(x=pew$x, y=pew$y, biome=prediction.wwf)
+
+pew.wwf.pred.r <- rasterFromXYZ(as.data.frame(pew.wwf.pred)[, c("x", "y", "biome")])
+
+plot(pew.wwf.pred.r, main="Peak Eocene Warming, WWF Predictions", col=biome.col)
+```
+
+#### Terminal Eocene Event
+```{r}
+prediction.wwf <- predict(wwffit, tee)
+tee.wwf.pred <- data.frame(x=tee$x, y=tee$y, biome=prediction.wwf)
+
+tee.wwf.pred.r <- rasterFromXYZ(as.data.frame(tee.wwf.pred)[, c("x", "y", "biome")]) 
+writeRaster(tee.wwf.pred.r, "~/Google Drive/Erin Keleske/Biomes/predictions/raster/tee.wwf.pred.r.tif", overwrite=TRUE)
+plot(tee.wwf.pred.r, main="Terminal Eocene Event, WWF Predictions", col=biome.col)
+```
+
+
+#### Mid-Miocene Climatic Optimum
+```{r}
+prediction.wwf <- predict(wwffit, mco)
+mco.wwf.pred <- data.frame(x=mco$x, y=mco$y, biome=prediction.wwf)
+
+mco.wwf.pred.r <- rasterFromXYZ(as.data.frame(mco.wwf.pred)[, c("x", "y", "biome")]) 
+plot(mco.wwf.pred.r, main="Mid-Miocene Climatic Optimum, WWF Predictions", col=biome.col)
+```
+
+#### Miocene Cooling Event
+```{r}
+prediction.wwf <- predict(wwffit, mce)
+mce.wwf.pred <- data.frame(x=mce$x, y=mce$y, biome=prediction.wwf)
+
+mce.wwf.pred.r <- rasterFromXYZ(as.data.frame(mce.wwf.pred)[, c("x", "y", "biome")]) 
+plot(mce.wwf.pred.r, main="Late Miocene Cooling Event, WWF Prediction", col=biome.col)
+```
+
+#### Mid-Pliocene Warming Event
+```{r}
+prediction.wwf <- predict(wwffit, pwe)
+pwe.wwf.pred <- data.frame(x=pwe$x, y=pwe$y, biome=prediction.wwf)
+
+pwe.wwf.pred.r <- rasterFromXYZ(as.data.frame(pwe.wwf.pred)[, c("x", "y", "biome")]) 
+plot(pwe.wwf.pred.r, main="Pliocene Warming Event, WWF Predictions", col=biome.col)
+```
+
+#### Last Glacial Maximum
+```{r}
+prediction.wwf <- predict(wwffit, lgm)
+lgm.wwf.pred <- data.frame(x=lgm$x, y=lgm$y, biome=prediction.wwf)
+
+lgm.wwf.pred.r <- rasterFromXYZ(as.data.frame(lgm.wwf.pred)[, c("x", "y", "biome")]) 
+plot(lgm.wwf.pred.r, main="Last Glacial Maximum, WWF Predictions", col=biome.col2)
+```
+
+#### Mid-Holocene 
+```{r}
+prediction.wwf <- predict(wwffit, hol)
+hol.wwf.pred <- data.frame(x=hol$x, y=hol$y, biome=prediction.wwf)
+
+hol.wwf.pred.r <- rasterFromXYZ(as.data.frame(hol.wwf.pred)[, c("x", "y", "biome")]) 
+plot(hol.wwf.pred.r, main="Mid-Holocene, WWF Predictions", col=biome.col2)
+```
+
+#### Pre-Industrial Revolution
+```{r}
+prediction.wwf <- predict(wwffit, pir)
+pir.wwf.pred <- data.frame(x=pir$x, y=pir$y, biome=prediction.wwf)
+
+pir.wwf.pred.r <- rasterFromXYZ(as.data.frame(pir.wwf.pred)[, c("x", "y", "biome")]) 
+plot(pir.wwf.pred.r, main="Pre Industrial Revolution, WWF Predictions", col=biome.col)
+```
+
+#### Future
+```{r}
+prediction.wwf <- predict(wwffit, fut)
+fut.wwf.pred <- data.frame(x=fut$x, y=fut$y, biome=prediction.wwf)
+
+fut.wwf.pred.r <- rasterFromXYZ(as.data.frame(fut.wwf.pred)[, c("x", "y", "biome")]) 
+plot(fut.wwf.pred.r, main="Future, WWF Prediction", col=biome.col2)
+```
+
