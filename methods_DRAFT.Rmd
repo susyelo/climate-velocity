@@ -53,22 +53,22 @@ library(zoo)
 Paleodata is from two sources, both found on the GitHub repository. Data provided by the lab of Dr. David Beerling is provided in .csv format and show monthly predicted temperature and precipitation by lat/lon coordinates. 
 
 Loading initial Beerling data
-```{r error=FALSE warning=FALSE}
+```{r error=FALSE, message=FALSE, warning=FALSE}
 ### Import initial temperature datasets
-pew.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pew_tmp.csv")
-tee.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/tee_tmp.csv")
-mco.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mco_tmp.csv")
-mce.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mce_tmp.csv")
-pwe.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pwe_tmp.csv")
-pir.tmp <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pir_tmp.csv")
+pew.tmp <- read.csv("./data/pew_tmp.csv")
+tee.tmp <- read.csv("./data/tee_tmp.csv")
+mco.tmp <- read.csv("./data/mco_tmp.csv")
+mce.tmp <- read.csv("./data/mce_tmp.csv")
+pwe.tmp <- read.csv("./data/pwe_tmp.csv")
+pir.tmp <- read.csv("./data/pir_tmp.csv")
 
 ### Import initial precipitation datasets
-pew.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pew_prc.csv")
-tee.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/tee_prc.csv")
-mco.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mco_prc.csv")
-mce.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/mce_prc.csv")
-pwe.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pwe_prc.csv")
-pir.prc <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/pir_prc.csv")
+pew.prc <- read.csv("./data/pew_prc.csv")
+tee.prc <- read.csv("./data/tee_prc.csv")
+mco.prc <- read.csv("./data/mco_prc.csv")
+mce.prc <- read.csv("./data/mce_prc.csv")
+pwe.prc <- read.csv("./data/pwe_prc.csv")
+pir.prc <- read.csv("./data/pir_prc.csv")
 ```
 
 Paleodata from the WorldClim project are provided from the site in individuals rasters for each of 19 different climate variables. Data.frames provided on Github have been condensed and modified in the following ways: 
@@ -79,17 +79,17 @@ Paleodata from the WorldClim project are provided from the site in individuals r
 The data are provided in the same format as the Beerling data. 
 
 Loading initial WorldClim data
-```{r error=FALSE warning=FALSE}
-lgm <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/lgm.csv")
-hol <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/hol.csv")
+```{r error=FALSE, warning=FALSE}
+lgm <- read.csv("./data/lgm.csv")
+hol <- read.csv("./data/hol.csv")
 ```
 
 Current climate data and 50-year future predictions based on RCP8.5 scenarios were also downloaded from WorldClim with variables 1-11 divided by 11. 
 
 Loading initial WorldClim data
-```{r error=FALSE warning=FALSE}
-cur <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/cur.csv")
-fut <- source_data("https://github.com/KerkhoffLab/climate-velocity/raw/master/data/fut.csv")
+```{r error=FALSE, warning=FALSE}
+cur <- read.csv("./data/cur.csv")
+fut <- read.csv("./data/fut.csv")
 ```
 
 Here is a chronological list of all datasets and their approximate times and atmospheric carbon levels: 
@@ -134,14 +134,9 @@ The function bioclim.var takes two data.frames both with lat/lon coordinates, on
 Current datasets are in lat/lon coordinates but later calculations require coordinates measured in kilometer distance from geographic center [0,0]. Function km.coord makes this translation. 
 
 Source functions
-```{r error=FALSE warning=FALSE}
-bioclim.var <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/bioclim.var.r", ssl.verifypeer=FALSE)
-eval(parse(text="bioclim.var"))
-source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/bioclim.var.r")
-
-km.coord <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/km.coord.r", ssl.verifypeer=FALSE)
-eval(parse(text="km.coord"))
-source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/km.coord.r")
+```{r error=FALSE, message=FALSE, warning=FALSE}
+source("./functions/bioclim.var.r")
+source("./functions/km.coord.r")
 ```
 
 Calculate the 19 Bioclim variables for the Beerling datasets, convert to km coordinates and subset all data.sets to the same longitudinal maximum and minimums. 
