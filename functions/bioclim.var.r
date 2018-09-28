@@ -77,113 +77,52 @@ bioclim.var <- function(temp, prc){
   qrt.tmp$colMin = colnames(qrt.tmp[,1:12])[apply(qrt.tmp[,1:12],1,which.min)]
   
   # Mean Temperature of Wettest Quarter (BIO8)
-  if(qrt.prc$colMax=="jfm"){
-    clim$bio8 <- (temp$jan + temp$feb + temp$mar)/3
-  } else if (qrt.prc$colMax=="fma"){
-    clim$bio8 <- (temp$feb + temp$mar + temp$apr)/3
-  } else if (qrt.prc$colMax=="mam"){
-    clim$bio8 <- (temp$mar + temp$apr + temp$may)/3
-  } else if (qrt.prc$colMax=="amj"){
-    clim$bio8 <- (temp$apr + temp$may + temp$jun)/3
-  } else if (qrt.prc$colMax=="mjj"){
-    clim$bio8 <- (temp$may + temp$jun + temp$jul)/3
-  } else if (qrt.prc$colMax=="jja"){
-    clim$bio8 <- (temp$jun + temp$jul + temp$aug)/3
-  } else if (qrt.prc$colMax=="jas"){
-    clim$bio8 <- (temp$jul + temp$aug + temp$sep)/3
-  } else if (qrt.prc$colMax=="aso"){
-    clim$bio8 <- (temp$aug + temp$sep + temp$oct)/3
-  } else if (qrt.prc$colMax=="son"){
-    clim$bio8 <- (temp$sep + temp$oct + temp$nov)/3
-  } else if (qrt.prc$colMax=="ond"){
-    clim$bio8 <- (temp$oct + temp$nov + temp$dec)/3
-  } else if (qrt.prc$colMax=="ndj"){
-    clim$bio8 <- (temp$nov + temp$dec + temp$jan)/3
-  } else if (qrt.prc$colMax=="djf"){
-    clim$bio8 <- (temp$dec + temp$jan + temp$feb)/3
+  
+  x_df<-data.frame(jfm = c("jan" , "feb" , "mar"))
+  x_df$fma <- c("feb" , "mar" , "apr")
+  x_df$mam <- c("mar" , "apr" , "may")
+  x_df$amj <- c("apr" , "may" , "jun")
+  x_df$mjj <- c("may" , "jun" , "jul")
+  x_df$jja <- c("jun" , "jul" , "aug")
+  x_df$jas <- c("jul" , "aug" , "sep")
+  x_df$aso <- c("aug" , "sep" , "oct")
+  x_df$son <- c("sep" , "oct" , "nov")
+  x_df$ond <- c("oct" , "nov" , "dec")
+  x_df$ndj <- c("nov" , "dec" , "jan")
+  x_df$djf <- c("dec" , "jan" , "feb")
+  
+  # Loop is the equivalent to the following lines
+  #ix <- which(qrt.prc$colMax=="jfm")
+  #clim$bio8[ix] <- ((temp$jan + temp$feb + temp$mar)/3)[ix]
+    
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.prc$colMax==colnames(x_df)[i])
+    clim$bio8[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
+  
   # Mean Temperature of Driest Quarter (BIO9)
-  if(qrt.prc$colMin=="jfm"){
-    clim$bio9 <- (temp$jan + temp$feb + temp$mar)/3
-  } else if (qrt.prc$colMin=="fma"){
-    clim$bio9 <- (temp$feb + temp$mar + temp$apr)/3
-  } else if (qrt.prc$colMin=="mam"){
-    clim$bio9 <- (temp$mar + temp$apr + temp$may)/3
-  } else if (qrt.prc$colMin=="amj"){
-    clim$bio9 <- (temp$apr + temp$may + temp$jun)/3
-  } else if (qrt.prc$colMin=="mjj"){
-    clim$bio9 <- (temp$may + temp$jun + temp$jul)/3
-  } else if (qrt.prc$colMin=="jja"){
-    clim$bio9 <- (temp$jun + temp$jul + temp$aug)/3
-  } else if (qrt.prc$colMin=="jas"){
-    clim$bio9 <- (temp$jul + temp$aug + temp$sep)/3
-  } else if (qrt.prc$colMin=="aso"){
-    clim$bio9 <- (temp$aug + temp$sep + temp$oct)/3
-  } else if (qrt.prc$colMin=="son"){
-    clim$bio9 <- (temp$sep + temp$oct + temp$nov)/3
-  } else if (qrt.prc$colMin=="ond"){
-    clim$bio9 <- (temp$oct + temp$nov + temp$dec)/3
-  } else if (qrt.prc$colMin=="ndj"){
-    clim$bio9 <- (temp$nov + temp$dec + temp$jan)/3
-  } else if (qrt.prc$colMin=="djf"){
-    clim$bio9 <- (temp$dec + temp$jan + temp$feb)/3
+  
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.prc$colMin==colnames(x_df)[i])
+    clim$bio9[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
   # Mean Temperature of Warmest Quarter (BIO10)
-  if(qrt.tmp$colMax=="jfm"){
-    clim$bio10 <- (temp$jan + temp$feb + temp$mar)/3
-  } else if (qrt.tmp$colMax=="fma"){
-    clim$bio10 <- (temp$feb + temp$mar + temp$apr)/3
-  } else if (qrt.tmp$colMax=="mam"){
-    clim$bio10 <- (temp$mar + temp$apr + temp$may)/3
-  } else if (qrt.tmp$colMax=="amj"){
-    clim$bio10 <- (temp$apr + temp$may + temp$jun)/3
-  } else if (qrt.tmp$colMax=="mjj"){
-    clim$bio10 <- (temp$may + temp$jun + temp$jul)/3
-  } else if (qrt.tmp$colMax=="jja"){
-    clim$bio10 <- (temp$jun + temp$jul + temp$aug)/3
-  } else if (qrt.tmp$colMax=="jas"){
-    clim$bio10 <- (temp$jul + temp$aug + temp$sep)/3
-  } else if (qrt.tmp$colMax=="aso"){
-    clim$bio10 <- (temp$aug + temp$sep + temp$oct)/3
-  } else if (qrt.tmp$colMax=="son"){
-    clim$bio10 <- (temp$sep + temp$oct + temp$nov)/3
-  } else if (qrt.tmp$colMax=="ond"){
-    clim$bio10 <- (temp$oct + temp$nov + temp$dec)/3
-  } else if (qrt.tmp$colMax=="ndj"){
-    clim$bio10 <- (temp$nov + temp$dec + temp$jan)/3
-  } else if (qrt.tmp$colMax=="djf"){
-    clim$bio10 <- (temp$dec + temp$jan + temp$feb)/3
+  
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.tmp$colMax==colnames(x_df)[i])
+    clim$bio10[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
+ 
   # Mean Tempeature of Coldest Quarter (BIO11)
-  if(qrt.tmp$colMin=="jfm"){
-    clim$bio11 <- (temp$jan + temp$feb + temp$mar)/3
-  } else if (qrt.tmp$colMin=="fma"){
-    clim$bio11 <- (temp$feb + temp$mar + temp$apr)/3
-  } else if (qrt.tmp$colMin=="mam"){
-    clim$bio11 <- (temp$mar + temp$apr + temp$may)/3
-  } else if (qrt.tmp$colMin=="amj"){
-    clim$bio11 <- (temp$apr + temp$may + temp$jun)/3
-  } else if (qrt.tmp$colMin=="mjj"){
-    clim$bio11 <- (temp$may + temp$jun + temp$jul)/3
-  } else if (qrt.tmp$colMin=="jja"){
-    clim$bio11 <- (temp$jun + temp$jul + temp$aug)/3
-  } else if (qrt.tmp$colMin=="jas"){
-    clim$bio11 <- (temp$jul + temp$aug + temp$sep)/3
-  } else if (qrt.tmp$colMin=="aso"){
-    clim$bio11 <- (temp$aug + temp$sep + temp$oct)/3
-  } else if (qrt.tmp$colMin=="son"){
-    clim$bio11 <- (temp$sep + temp$oct + temp$nov)/3
-  } else if (qrt.tmp$colMin=="ond"){
-    clim$bio11 <- (temp$oct + temp$nov + temp$dec)/3
-  } else if (qrt.tmp$colMin=="ndj"){
-    clim$bio11 <- (temp$nov + temp$dec + temp$jan)/3
-  } else if (qrt.tmp$colMin=="djf"){
-    clim$bio11 <- (temp$dec + temp$jan + temp$feb)/3
-  }
   
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.tmp$colMin==colnames(x_df)[i])
+    clim$bio11[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
+  }
+
   # Annual Precipitation (BIO12)
   clim$bio12 <- (prc$jan + prc$feb + prc$mar + prc$apr + prc$may + prc$jun + prc$jul + prc$aug + prc$sep + prc$oct + prc$nov + prc$dec)
   
@@ -198,111 +137,33 @@ bioclim.var <- function(temp, prc){
   clim$bio15 <- (rowSds(as.matrix(prc), rows=NULL, cols=NULL, na.rm=TRUE))/(1 + (clim$bio12/12))*100
   
   # Precipitation of Wettest Quarter (BIO16)
-  if(qrt.prc$colMax=="jfm"){
-    clim$bio16 <- (prc$jan + prc$feb + prc$mar)
-  } else if (qrt.prc$colMax=="fma"){
-    clim$bio16 <- (prc$feb + prc$mar + prc$apr)
-  } else if (qrt.prc$colMax=="mam"){
-    clim$bio16 <- (prc$mar + prc$apr + prc$may)
-  } else if (qrt.prc$colMax=="amj"){
-    clim$bio16 <- (prc$apr + prc$may + prc$jun)
-  } else if (qrt.prc$colMax=="mjj"){
-    clim$bio16 <- (prc$may + prc$jun + prc$jul)
-  } else if (qrt.prc$colMax=="jja"){
-    clim$bio16 <- (prc$jun + prc$jul + prc$aug)
-  } else if (qrt.prc$colMax=="jas"){
-    clim$bio16 <- (prc$jul + prc$aug + prc$sep)
-  } else if (qrt.prc$colMax=="aso"){
-    clim$bio16 <- (prc$aug + prc$sep + prc$oct)
-  } else if (qrt.prc$colMax=="son"){
-    clim$bio16 <- (prc$sep + prc$oct + prc$nov)
-  } else if (qrt.prc$colMax=="ond"){
-    clim$bio16 <- (prc$oct + prc$nov + prc$dec)
-  } else if (qrt.prc$colMax=="ndj"){
-    clim$bio16 <- (prc$nov + prc$dec + prc$jan)
-  } else if (qrt.prc$colMax=="djf"){
-    clim$bio16 <- (prc$dec + prc$jan + prc$feb)
-  }
-  
+
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.prc$colMax==colnames(x_df)[i])
+    clim$bio16[ix]<-rowSums(prc[colnames(prc)%in%x_df[,i]])[ix]
+  }  
+
   # Precipitation of Driest Quarter (BIO17)
-  if(qrt.prc$colMin=="jfm"){
-    clim$bio17 <- (prc$jan + prc$feb + prc$mar)
-  } else if (qrt.prc$colMin=="fma"){
-    clim$bio17 <- (prc$feb + prc$mar + prc$apr)
-  } else if (qrt.prc$colMin=="mam"){
-    clim$bio17 <- (prc$mar + prc$apr + prc$may)
-  } else if (qrt.prc$colMin=="amj"){
-    clim$bio17 <- (prc$apr + prc$may + prc$jun)
-  } else if (qrt.prc$colMin=="mjj"){
-    clim$bio17 <- (prc$may + prc$jun + prc$jul)
-  } else if (qrt.prc$colMin=="jja"){
-    clim$bio17 <- (prc$jun + prc$jul + prc$aug)
-  } else if (qrt.prc$colMin=="jas"){
-    clim$bio17 <- (prc$jul + prc$aug + prc$sep)
-  } else if (qrt.prc$colMin=="aso"){
-    clim$bio17 <- (prc$aug + prc$sep + prc$oct)
-  } else if (qrt.prc$colMin=="son"){
-    clim$bio17 <- (prc$sep + prc$oct + prc$nov)
-  } else if (qrt.prc$colMin=="ond"){
-    clim$bio17 <- (prc$oct + prc$nov + prc$dec)
-  } else if (qrt.prc$colMin=="ndj"){
-    clim$bio17 <- (prc$nov + prc$dec + prc$jan)
-  } else if (qrt.prc$colMin=="djf"){
-    clim$bio17 <- (prc$dec + prc$jan + prc$feb)
-  }
+
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.prc$colMin==colnames(x_df)[i])
+    clim$bio17[ix]<-rowSums(prc[colnames(prc)%in%x_df[,i]])[ix]
+  }  
   
+
   # Precipitation of Warmest Quarter (BIO18)
-  if(qrt.tmp$colMax=="jfm"){
-    clim$bio18 <- (prc$jan + prc$feb + prc$mar)
-  } else if (qrt.tmp$colMax=="fma"){
-    clim$bio18 <- (prc$feb + prc$mar + prc$apr)
-  } else if (qrt.tmp$colMax=="mam"){
-    clim$bio18 <- (prc$mar + prc$apr + prc$may)
-  } else if (qrt.tmp$colMax=="amj"){
-    clim$bio18 <- (prc$apr + prc$may + prc$jun)
-  } else if (qrt.tmp$colMax=="mjj"){
-    clim$bio18 <- (prc$may + prc$jun + prc$jul)
-  } else if (qrt.tmp$colMax=="jja"){
-    clim$bio18 <- (prc$jun + prc$jul + prc$aug)
-  } else if (qrt.tmp$colMax=="jas"){
-    clim$bio18 <- (prc$jul + prc$aug + prc$sep)
-  } else if (qrt.tmp$colMax=="aso"){
-    clim$bio18 <- (prc$aug + prc$sep + prc$oct)
-  } else if (qrt.tmp$colMax=="son"){
-    clim$bio18 <- (prc$sep + prc$oct + prc$nov)
-  } else if (qrt.tmp$colMax=="ond"){
-    clim$bio18 <- (prc$oct + prc$nov + prc$dec)
-  } else if (qrt.tmp$colMax=="ndj"){
-    clim$bio18 <- (prc$nov + prc$dec + prc$jan)
-  } else if (qrt.tmp$colMax=="djf"){
-    clim$bio18 <- (prc$dec + prc$jan + prc$feb)
+
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.tmp$colMax==colnames(x_df)[i])
+    clim$bio18[ix]<-rowSums(prc[colnames(prc)%in%x_df[,i]])[ix]
   }
-  
+
+
   # Precipitation of Coldest Quarter (BIO19)
-  if(qrt.tmp$colMin=="jfm"){
-    clim$bio19 <- (prc$jan + prc$feb + prc$mar)
-  } else if (qrt.tmp$colMin=="fma"){
-    clim$bio19 <- (prc$feb + prc$mar + prc$apr)
-  } else if (qrt.tmp$colMin=="mam"){
-    clim$bio19 <- (prc$mar + prc$apr + prc$may)
-  } else if (qrt.tmp$colMin=="amj"){
-    clim$bio19 <- (prc$apr + prc$may + prc$jun)
-  } else if (qrt.tmp$colMin=="mjj"){
-    clim$bio19 <- (prc$may + prc$jun + prc$jul)
-  } else if (qrt.tmp$colMin=="jja"){
-    clim$bio19 <- (prc$jun + prc$jul + prc$aug)
-  } else if (qrt.tmp$colMin=="jas"){
-    clim$bio19 <- (prc$jul + prc$aug + prc$sep)
-  } else if (qrt.tmp$colMin=="aso"){
-    clim$bio19 <- (prc$aug + prc$sep + prc$oct)
-  } else if (qrt.tmp$colMin=="son"){
-    clim$bio19 <- (prc$sep + prc$oct + prc$nov)
-  } else if (qrt.tmp$colMin=="ond"){
-    clim$bio19 <- (prc$oct + prc$nov + prc$dec)
-  } else if (qrt.tmp$colMin=="ndj"){
-    clim$bio19 <- (prc$nov + prc$dec + prc$jan)
-  } else if (qrt.tmp$colMin=="djf"){
-    clim$bio19 <- (prc$dec + prc$jan + prc$feb)
+  
+  for (i in 1:length(x_df)){
+    ix <- which(qrt.tmp$colMin==colnames(x_df)[i])
+    clim$bio19[ix]<-rowSums(prc[colnames(prc)%in%x_df[,i]])[ix]
   }
   
   return(clim)
