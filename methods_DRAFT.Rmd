@@ -151,6 +151,11 @@ tee <- subset(tee, y < 81.25)
 tee <- subset(tee, y > -56.25)
 tee <- km.coord(tee)
 
+### Latitude and longitude values in mco.prc does not match with mco.tmp, therefore I am going to replace those values
+
+mco.prc$lat <- mco.tmp$lat
+mco.prc$lon <- mco.tmp$lon
+
 mco <- bioclim.var(mco.tmp, mco.prc)
 mco <- subset(mco, y < 81.25)
 mco <- subset(mco, y > -56.25)
@@ -220,14 +225,12 @@ This function requires a user-defined threshold for what constitutes a climate m
 
 Source function
 ```{r}
-cc.dist <- getURL("https://github.com/KerkhoffLab/climate-velocity/raw/master/functions/cc.dist.r", ssl.verifypeer=FALSE)
-eval(parse(text="cc.dist"))
-source("https://raw.githubusercontent.com/KerkhoffLab/climate-velocity/master/functions/cc.dist.r")
+source("./functions/cc.dist.r")
 ```
 
 Since almost all of the dataframes have different coordinates, we first must resample the smaller dataset using the coordinates from the larger dataset for most pairings. This resampling requires the data in raster format. 
 
-```{r error=FALSE warning=FALSE}
+```{r error=FALSE, warning=FALSE}
 pew.r <- rasterFromXYZ(as.data.frame(pew)[, c("x", "y", "bio1")]) 
 tee.r <- rasterFromXYZ(as.data.frame(tee)[, c("x", "y", "bio1")])
 mco.r <- rasterFromXYZ(as.data.frame(mco)[, c("x", "y", "bio1")])
@@ -264,7 +267,7 @@ plot(pew.tee.r, main="Peak Eocene Warmth - Terminal Eocene Event", colNA="lightb
 ```
 
 #### Terminal Eocene Event - Mid-Miocene Climatic Optimum
-```{r error=FALSE warning=FALSE}
+```{r error=FALSE, warning=FALSE}
 # Resample
 sm <- tee.r
 bg <- mco.r 
@@ -524,7 +527,7 @@ Ideally mangroves would be added to another category at some point. These divisi
 
 ```{r}
 # download data.frame with biomes and associated climate variables by x and y variables 
-wwfclim <- source_data("https://github.com/KerkhoffLab/climate-velocity/blob/master/wwfclim.pred.csv?raw=true")
+wwfclim <- read.csv("wwfclim.pred.csv")
 ```
 
 ## Random Forest
@@ -576,7 +579,7 @@ prediction.wwf <- predict(wwffit, tee)
 tee.wwf.pred <- data.frame(x=tee$x, y=tee$y, biome=prediction.wwf)
 
 tee.wwf.pred.r <- rasterFromXYZ(as.data.frame(tee.wwf.pred)[, c("x", "y", "biome")]) 
-writeRaster(tee.wwf.pred.r, "~/Google Drive/Erin Keleske/Biomes/predictions/raster/tee.wwf.pred.r.tif", overwrite=TRUE)
+#writeRaster(tee.wwf.pred.r, "~/Google Drive/Erin #Keleske/Biomes/predictions/raster/tee.wwf.pred.r.tif", overwrite=TRUE)
 plot(tee.wwf.pred.r, main="Terminal Eocene Event, WWF Predictions", col=biome.col)
 ```
 
@@ -643,4 +646,42 @@ fut.wwf.pred <- data.frame(x=fut$x, y=fut$y, biome=prediction.wwf)
 fut.wwf.pred.r <- rasterFromXYZ(as.data.frame(fut.wwf.pred)[, c("x", "y", "biome")]) 
 plot(fut.wwf.pred.r, main="Future, WWF Prediction", col=biome.col2)
 ```
+
+# Proportion of land covering the different predicted biomes
+
+  Category 1= Tropical and subtropical moist and dry broadleaf forests, tropical and subtropical coniferous forests. 
+    Category 2 = Temperate broadleaf and mixed forests, temperate conifer forests, boreal forests and taiga, montane grasslands and shrublands, and Mediterranean forests, woodlands, and scrub. 
+    Category 3 = Tundra
+    Category Four = Temperate grasslands, savannas and shrublands, deserts and xeric shrublands 
+    Category Five = Tropical and subtropical grasslands, savannas, and shrublands and flooded grasslands and savannas
+    Category Six = Mangroves
+
+```{r}
+biomes_pred <- data.frame(
+biomes = c("Tropical_wet","Temperate_wet","Tundra","Temperate_dry","Tropical_dry","Mangroves"),
+pew = as.data.frame(round(table(pew.wwf.pred$biome)/sum(table(pew.wwf.pred$biome)),2))$Freq,
+tee = as.data.frame(round(table(tee.wwf.pred$biome)/sum(table(tee.wwf.pred$biome)),2))$Freq, 
+mco = as.data.frame(round(table(mco.wwf.pred$biome)/sum(table(mco.wwf.pred$biome)),2))$Freq,
+mce = as.data.frame(round(table(mce.wwf.pred$biome)/sum(table(mce.wwf.pred$biome)),2))$Freq,
+pwe = as.data.frame(round(table(pwe.wwf.pred$biome)/sum(table(pwe.wwf.pred$biome)),2))$Freq,
+pir = as.data.frame(round(table(pir.wwf.pred$biome)/sum(table(pir.wwf.pred$biome)),2))$Freq
+)
+
+library(tidyverse)
+
+biomes_pred2 <-tidyr::gather(biomes_pred, "Period","Prop", 2:7)
+
+```
+
+```{r}
+
+biomes_pred2$biomes<-factor(biomes_pred2$biomes,levels=c("Tropical_wet","Tropical_dry","Temperate_wet","Temperate_dry","Tundra","Mangroves"))
+
+biomes_pred2$Period<- factor(biomes_pred2$Period,levels=c("pew","tee","mco","mce","pwe","pir"))
+
+ggplot(biomes_pred2, aes(x=Period, y=Prop, group=biomes)) +
+  geom_line(aes(color=biomes))+
+  geom_point(aes(color=biomes))
+```
+
 
