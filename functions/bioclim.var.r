@@ -17,10 +17,11 @@ bioclim.var <- function(temp, prc){
   clim$y <- temp$lat
   
   # Annual Mean Temperature (BIO1)
-  clim$bio1 <- (temp$jan + temp$feb + temp$mar + temp$apr + temp$may + temp$jun + temp$jul + temp$aug + temp$sep + temp$oct + temp$nov + temp$dec)/12
+  clim$bio1 <- rowMeans(temp[,-c(1:2)])
   
   # Temperature Seasonality (BIO4)
-  clim$bio4 <- (rowSds(as.matrix(temp), rows=NULL, cols=NULL, na.rm=FALSE))/clim$bio1*100
+  # Here the calculation was talking into account x and y values
+  clim$bio4 <- (rowSds(as.matrix(temp[,-c(1:2)]), rows=NULL, cols=NULL, na.rm=FALSE))/clim$bio1*100
   
   # Max Temperature of Warmest Month (BIO5)
   clim$bio5 <- pmax(temp$jan, temp$feb, temp$mar, temp$apr, temp$may, temp$jun, temp$jul, temp$aug, temp$sep, temp$oct, temp$nov, temp$dec)
@@ -76,7 +77,9 @@ bioclim.var <- function(temp, prc){
   qrt.tmp$colMax = colnames(qrt.tmp[,1:12])[apply(qrt.tmp[,1:12],1,which.max)]
   qrt.tmp$colMin = colnames(qrt.tmp[,1:12])[apply(qrt.tmp[,1:12],1,which.min)]
   
-  # Mean Temperature of Wettest Quarter (BIO8)
+
+#  Mean Temperature of Wettest Quarter (BIO8) ---------------------------
+
   
   x_df<-data.frame(jfm = c("jan" , "feb" , "mar"))
   x_df$fma <- c("feb" , "mar" , "apr")
@@ -100,41 +103,50 @@ bioclim.var <- function(temp, prc){
     clim$bio8[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
-  
-  # Mean Temperature of Driest Quarter (BIO9)
-  
+
+# Mean Temperature of Driest Quarter (BIO9) -------------------------------
+
   for (i in 1:length(x_df)){
     ix <- which(qrt.prc$colMin==colnames(x_df)[i])
     clim$bio9[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
-  # Mean Temperature of Warmest Quarter (BIO10)
-  
+
+# Mean Temperature of Warmest Quarter (BIO10) -----------------------------
+
   for (i in 1:length(x_df)){
     ix <- which(qrt.tmp$colMax==colnames(x_df)[i])
     clim$bio10[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
   
- 
-  # Mean Tempeature of Coldest Quarter (BIO11)
-  
+
+# Mean Tempeature of Coldest Quarter (BIO11) ------------------------------
+
   for (i in 1:length(x_df)){
     ix <- which(qrt.tmp$colMin==colnames(x_df)[i])
     clim$bio11[ix]<-rowMeans(temp[colnames(temp)%in%x_df[,i]])[ix]
   }
 
-  # Annual Precipitation (BIO12)
+
+# Annual Precipitation (BIO12) --------------------------------------------
+  
   clim$bio12 <- (prc$jan + prc$feb + prc$mar + prc$apr + prc$may + prc$jun + prc$jul + prc$aug + prc$sep + prc$oct + prc$nov + prc$dec)
   
-  # Precipitation of Wettest Month (BIO13)
+
+# Precipitation of Wettest Month (BIO13) ----------------------------------
+
   clim$bio13 <- pmax(temp$jan, temp$feb, temp$mar, temp$apr, temp$may, temp$jun, temp$jul, temp$aug, temp$sep, temp$oct, temp$nov, temp$dec)
   
-  # Precipitation of Driest Month (BIO14)
+
+# Precipitation of Driest Month (BIO14) -----------------------------------
+
   clim$bio14 <- pmin(temp$jan, temp$feb, temp$mar, temp$apr, temp$may, temp$jun, temp$jul, temp$aug, temp$sep, temp$oct, temp$nov, temp$dec)
   
-  # Precipitation Seasonality (BIO15)
+
+# Precipitation Seasonality (BIO15) ---------------------------------------
+
   prc <- data.frame(apply(prc, 2, function(x) as.numeric(as.character(x))))
-  clim$bio15 <- (rowSds(as.matrix(prc), rows=NULL, cols=NULL, na.rm=TRUE))/(1 + (clim$bio12/12))*100
+  clim$bio15 <- (rowSds(as.matrix(prc[,-c(1:2)]), rows=NULL, cols=NULL, na.rm=TRUE))/(1 + (clim$bio12/12))*100
   
   # Precipitation of Wettest Quarter (BIO16)
 
