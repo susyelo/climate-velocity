@@ -140,15 +140,13 @@ source("./functions/km.coord.r")
 ```
 
 Calculate the 19 Bioclim variables for the Beerling datasets, convert to km coordinates and subset all data.sets to the same longitudinal maximum and minimums. 
-```{r}
+```{r message=FALSE, warning=FALSE}
 pew <- bioclim.var(pew.tmp, pew.prc)
-pew <- subset(pew, y < 81.25)
-pew <- subset(pew, y > -56.25)
+pew <- subset(pew, y < 83 & y > -56 & x < (-22) & x > (-175))
 pew <- km.coord(pew)
 
 tee <- bioclim.var(tee.tmp, tee.prc)
-tee <- subset(tee, y < 81.25)
-tee <- subset(tee, y > -56.25)
+tee <- subset(tee, y < 83 & y > -56 & x < (-22) & x > (-175))
 tee <- km.coord(tee)
 
 ### Latitude and longitude values in mco.prc does not match with mco.tmp, therefore I am going to replace those values
@@ -157,39 +155,31 @@ mco.prc$lat <- mco.tmp$lat
 mco.prc$lon <- mco.tmp$lon
 
 mco <- bioclim.var(mco.tmp, mco.prc)
-mco <- subset(mco, y < 81.25)
-mco <- subset(mco, y > -56.25)
+mco <- subset(mco, y < 83 & y > -56 & x < (-22) & x > (-175))
 mco <- km.coord(mco)
 
 mce <- bioclim.var(mce.tmp, mce.prc)
-mce <- subset(mce, y < 81.25)
-mce <- subset(mce, y > -56.25)
+mce <- subset(mce, y < 83 & y > -56 & x < (-22) & x > (-175))
 mce <- km.coord(mce)
 
 pwe <- bioclim.var(pwe.tmp, pwe.prc)
-pwe <- subset(pwe, y < 81.25)
-pwe <- subset(pwe, y > -56.25)
+pwe <- subset(pwe, y < 83 & y > -56 & x < (-22) & x > (-175))
 pwe <- km.coord(pwe)
 
-lgm <- subset(lgm, y < 81.25)
-lgm <- subset(lgm, y > -56.25)
+lgm <- subset(lgm, y < 83 & y > -56 & x < (-22) & x > (-175))
 lgm <- km.coord(lgm)
 
-hol <- subset(hol, y < 81.25)
-hol <- subset(hol, y > -56.25)
+hol <- subset(hol, y < 83 & y > -56 & x < (-22) & x > (-175))
 hol <- km.coord(hol)
 
 pir <- bioclim.var(pir.tmp, pir.prc)
-pir <- subset(pir, y < 81.25)
-pir <- subset(pir, y > -56.25)
+pir <- subset(pir, y < 83 & y > -56 & x < (-22) & x > (-175))
 pir <- km.coord(pir)
 
-cur <- subset(cur, y < 81.25)
-cur <- subset(cur, y > -56.25)
+cur <- subset(cur,y < 83 & y > -56 & x < (-22) & x > (-175))
 cur <- km.coord(cur)
 
-fut <- subset(fut, y < 81.25)
-fut <- subset(fut, y > -56.25)
+fut <- subset(fut, y < 83 & y > -56 & x < (-22) & x > (-175))
 fut <- km.coord(fut)
 ```
 
@@ -527,7 +517,9 @@ Ideally mangroves would be added to another category at some point. These divisi
 
 ```{r}
 # download data.frame with biomes and associated climate variables by x and y variables 
-wwfclim <- read.csv("wwfclim.pred.csv")
+#wwfclim <- read.csv("wwfclim.pred.csv")
+wwfclim <- readRDS("./data/01_Biome_class.rds")
+wwfclim <- na.omit(wwfclim) # Some NAs in bio3
 ```
 
 ## Random Forest
@@ -535,7 +527,7 @@ wwfclim <- read.csv("wwfclim.pred.csv")
 
 ```{r}
 set.seed(500) 
-wwffit <- randomForest(as.factor(BIOME) ~ bio1 + bio2 + bio3 + bio4 + bio5 + bio6 + bio7 + bio8 + bio9 + bio10 + bio11 + bio12 + bio13 + bio14 + bio15 + bio16 + bio17 + bio18 + bio19, 
+wwffit <- randomForest(as.factor(Biomes) ~ bio1 + bio2 + bio3 + bio4 + bio5 + bio6 + bio7 + bio8 + bio9 + bio10 + bio11 + bio12 + bio13 + bio14 + bio15 + bio16 + bio17 + bio18 + bio19, 
                          data=wwfclim,
                          importance=TRUE, 
                          ntree=100)
@@ -550,8 +542,10 @@ Define colors (definitely need to find a better way to do this).
 ```{r}
 # biome.col is used for Beerling data and biome.col2 is used for WorldClim data which tend to include Mangroves-- otherwise the colors get thrown off. 
 
-biome.col <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey")
-biome.col2 <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey", "darkorange")
+#biome.col <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey")
+#biome.col2 <- c("darkorchid","red", "yellow", "darkgreen", "darkgrey", "darkorange")
+
+biome.col2 <- c("darkorchid","red", "yellow", "darkgreen")
 ```
 
 Current
@@ -570,7 +564,7 @@ pew.wwf.pred <- data.frame(x=pew$x, y=pew$y, biome=prediction.wwf)
 
 pew.wwf.pred.r <- rasterFromXYZ(as.data.frame(pew.wwf.pred)[, c("x", "y", "biome")])
 
-plot(pew.wwf.pred.r, main="Peak Eocene Warming, WWF Predictions", col=biome.col)
+plot(pew.wwf.pred.r, main="Peak Eocene Warming, WWF Predictions", col=biome.col2)
 ```
 
 #### Terminal Eocene Event
@@ -580,7 +574,7 @@ tee.wwf.pred <- data.frame(x=tee$x, y=tee$y, biome=prediction.wwf)
 
 tee.wwf.pred.r <- rasterFromXYZ(as.data.frame(tee.wwf.pred)[, c("x", "y", "biome")]) 
 #writeRaster(tee.wwf.pred.r, "~/Google Drive/Erin #Keleske/Biomes/predictions/raster/tee.wwf.pred.r.tif", overwrite=TRUE)
-plot(tee.wwf.pred.r, main="Terminal Eocene Event, WWF Predictions", col=biome.col)
+plot(tee.wwf.pred.r, main="Terminal Eocene Event, WWF Predictions", col=biome.col2)
 ```
 
 
@@ -590,7 +584,7 @@ prediction.wwf <- predict(wwffit, mco)
 mco.wwf.pred <- data.frame(x=mco$x, y=mco$y, biome=prediction.wwf)
 
 mco.wwf.pred.r <- rasterFromXYZ(as.data.frame(mco.wwf.pred)[, c("x", "y", "biome")]) 
-plot(mco.wwf.pred.r, main="Mid-Miocene Climatic Optimum, WWF Predictions", col=biome.col)
+plot(mco.wwf.pred.r, main="Mid-Miocene Climatic Optimum, WWF Predictions", col=biome.col2)
 ```
 
 #### Miocene Cooling Event
@@ -599,7 +593,7 @@ prediction.wwf <- predict(wwffit, mce)
 mce.wwf.pred <- data.frame(x=mce$x, y=mce$y, biome=prediction.wwf)
 
 mce.wwf.pred.r <- rasterFromXYZ(as.data.frame(mce.wwf.pred)[, c("x", "y", "biome")]) 
-plot(mce.wwf.pred.r, main="Late Miocene Cooling Event, WWF Prediction", col=biome.col)
+plot(mce.wwf.pred.r, main="Late Miocene Cooling Event, WWF Prediction", col=biome.col2)
 ```
 
 #### Mid-Pliocene Warming Event
@@ -608,7 +602,7 @@ prediction.wwf <- predict(wwffit, pwe)
 pwe.wwf.pred <- data.frame(x=pwe$x, y=pwe$y, biome=prediction.wwf)
 
 pwe.wwf.pred.r <- rasterFromXYZ(as.data.frame(pwe.wwf.pred)[, c("x", "y", "biome")]) 
-plot(pwe.wwf.pred.r, main="Pliocene Warming Event, WWF Predictions", col=biome.col)
+plot(pwe.wwf.pred.r, main="Pliocene Warming Event, WWF Predictions", col=biome.col2)
 ```
 
 #### Last Glacial Maximum
@@ -635,7 +629,7 @@ prediction.wwf <- predict(wwffit, pir)
 pir.wwf.pred <- data.frame(x=pir$x, y=pir$y, biome=prediction.wwf)
 
 pir.wwf.pred.r <- rasterFromXYZ(as.data.frame(pir.wwf.pred)[, c("x", "y", "biome")]) 
-plot(pir.wwf.pred.r, main="Pre Industrial Revolution, WWF Predictions", col=biome.col)
+plot(pir.wwf.pred.r, main="Pre Industrial Revolution, WWF Predictions", col=biome.col2)
 ```
 
 #### Future
@@ -649,16 +643,10 @@ plot(fut.wwf.pred.r, main="Future, WWF Prediction", col=biome.col2)
 
 # Proportion of land covering the different predicted biomes
 
-  Category 1= Tropical and subtropical moist and dry broadleaf forests, tropical and subtropical coniferous forests. 
-    Category 2 = Temperate broadleaf and mixed forests, temperate conifer forests, boreal forests and taiga, montane grasslands and shrublands, and Mediterranean forests, woodlands, and scrub. 
-    Category 3 = Tundra
-    Category Four = Temperate grasslands, savannas and shrublands, deserts and xeric shrublands 
-    Category Five = Tropical and subtropical grasslands, savannas, and shrublands and flooded grasslands and savannas
-    Category Six = Mangroves
 
 ```{r}
 biomes_pred <- data.frame(
-biomes = c("Tropical_wet","Temperate_wet","Tundra","Temperate_dry","Tropical_dry","Mangroves"),
+biomes = c("Cold","Dry","Wet","Xeric"),
 pew = as.data.frame(round(table(pew.wwf.pred$biome)/sum(table(pew.wwf.pred$biome)),2))$Freq,
 tee = as.data.frame(round(table(tee.wwf.pred$biome)/sum(table(tee.wwf.pred$biome)),2))$Freq, 
 mco = as.data.frame(round(table(mco.wwf.pred$biome)/sum(table(mco.wwf.pred$biome)),2))$Freq,
@@ -675,7 +663,7 @@ biomes_pred2 <-tidyr::gather(biomes_pred, "Period","Prop", 2:7)
 
 ```{r}
 
-biomes_pred2$biomes<-factor(biomes_pred2$biomes,levels=c("Tropical_wet","Tropical_dry","Temperate_wet","Temperate_dry","Tundra","Mangroves"))
+biomes_pred2$biomes<-factor(biomes_pred2$biomes,levels=c("Wet","Dry","Xeric","Cold"))
 
 biomes_pred2$Period<- factor(biomes_pred2$Period,levels=c("pew","tee","mco","mce","pwe","pir"))
 
