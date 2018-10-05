@@ -264,8 +264,8 @@ plot(tee.wwf.pred.r, main="Terminal Eocene Event, WWF Predictions", col=biome.co
 prediction.wwf <- predict(wwffit, mco)
 mco.wwf.pred <- data.frame(x=mco$x, y=mco$y, biome=prediction.wwf)
 
-mco.wwf.pred.r <- rasterFromXYZ(as.data.frame(mco.wwf.pred)[, c("x", "y", "biome")]) 
-plot(mco.wwf.pred.r, main="Mid-Miocene Climatic Optimum, WWF Predictions", col=biome.col2)
+  mco.wwf.pred.r <- rasterFromXYZ(as.data.frame(mco.wwf.pred)[, c("x", "y", "biome")]) 
+plot(mco.wwf.pred.r, main="Mid-Miocene Climatic Optimum", col=biome.col2)
 ```
 
 #### Miocene Cooling Event
@@ -274,7 +274,7 @@ prediction.wwf <- predict(wwffit, mce)
 mce.wwf.pred <- data.frame(x=mce$x, y=mce$y, biome=prediction.wwf)
 
 mce.wwf.pred.r <- rasterFromXYZ(as.data.frame(mce.wwf.pred)[, c("x", "y", "biome")]) 
-plot(mce.wwf.pred.r, main="Late Miocene Cooling Event, WWF Prediction", col=biome.col2)
+plot(mce.wwf.pred.r, main="Late Miocene Cooling Event", col=biome.col2)
 ```
 
 #### Mid-Pliocene Warming Event
@@ -283,7 +283,7 @@ prediction.wwf <- predict(wwffit, pwe)
 pwe.wwf.pred <- data.frame(x=pwe$x, y=pwe$y, biome=prediction.wwf)
 
 pwe.wwf.pred.r <- rasterFromXYZ(as.data.frame(pwe.wwf.pred)[, c("x", "y", "biome")]) 
-plot(pwe.wwf.pred.r, main="Pliocene Warming Event, WWF Predictions", col=biome.col2)
+plot(pwe.wwf.pred.r, main="Pliocene Warming Event", col=biome.col2)
 ```
 
 #### Last Glacial Maximum
@@ -310,7 +310,7 @@ prediction.wwf <- predict(wwffit, pir)
 pir.wwf.pred <- data.frame(x=pir$x, y=pir$y, biome=prediction.wwf)
 
 pir.wwf.pred.r <- rasterFromXYZ(as.data.frame(pir.wwf.pred)[, c("x", "y", "biome")]) 
-plot(pir.wwf.pred.r, main="Pre Industrial Revolution, WWF Predictions", col=biome.col2)
+plot(pir.wwf.pred.r, main="Pre Industrial Revolution", col=biome.col2)
 ```
 
 #### Future
@@ -327,7 +327,7 @@ plot(fut.wwf.pred.r, main="Future, WWF Prediction", col=biome.col2)
 
 ```{r}
 # Changes per grid per period
-
+require(qgraph)
 Biome_change <- function(geoP1, geoP2, biomes=c("Cold","Dry","Wet","Xeric")){
   
   Cmb1 <- c(combn(1:length(biomes), 2,simplify = FALSE),combn(length(biomes):1, 2,simplify = FALSE))
@@ -340,31 +340,15 @@ Biome_change <- function(geoP1, geoP2, biomes=c("Cold","Dry","Wet","Xeric")){
   df_tmp$from <- unlist(lapply(Cmb1, function(x) biomes[x[1]]))
   df_tmp$to <- unlist(lapply(Cmb1, function(x) biomes[x[2]]))
   
-  qgraph(df_tmp[,c(2:3,1)])
+  qgraph(df_tmp[,c(2:3,1)],threshold=5,edge.labels=TRUE,edge.label.cex=2,asize=10)
 }
 
-Biome_change(pew.wwf.pred.r,tee.wwf.pred.r)
-
-```
-
-```{r}
-# Check qgraph R package for the main transition graphics. 
-# http://sachaepskamp.com/qgraph/examples (check the UNWEIGHTED DIRECTED GRAPHS)
-tmp2 <- tmp %>% 
-  filter(period=="pew_tee") %>% 
-  dplyr::select(from,to,count)
-  
-nm<-matrix(NA, nrow=4, ncol=4)
-colnames(nm) <- c("Cold","Dry","Wet","Xeric")
-rownames(nm) <- c("Cold","Dry","Wet","Xeric")
-diag(nm)<-1
-
-nm[as.matrix(tmp2[, 1:2])] <- tmp2[,3]
+Biome_change(pwe.wwf.pred.r, pir.wwf.pred.r)
 
 ```
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 biomes_pred <- data.frame(
 biomes = c("Cold","Dry","Wet","Xeric"),
 pew = as.data.frame(round(table(pew.wwf.pred$biome)/sum(table(pew.wwf.pred$biome)),2))$Freq,
@@ -389,12 +373,13 @@ biomes_pred2$Period<- factor(biomes_pred2$Period,levels=rev(c("pew","tee","mco",
 
 yr <- rev(c("55 My","33 My","15 My","10 My","3 My","0 My"))
 
-pdf("./figs/Biome_change.pdf")
+pdf("./figs/Biome_change.pdf", width = 12, height = 6)
 ggplot(biomes_pred2, aes(x=Period, y=Prop, group=biomes)) +
-  geom_line(aes(color=biomes),size=2)+
+  geom_line(aes(color=biomes),size=3)+
   scale_color_manual(values=c("#006400","#ffff00", "#ff0000","#0000ff")) +
-  scale_x_discrete(labels=paste(levels(biomes_pred2$Period),yr))
-  geom_point(aes(color=biomes))
+  scale_x_discrete(labels=paste(levels(biomes_pred2$Period),yr)) +
+  geom_point(aes(color=biomes)) +
+  theme(text = element_text(size=20))
 dev.off()
 
 ```
