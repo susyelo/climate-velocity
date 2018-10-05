@@ -2,24 +2,29 @@
 library(raster)
 library(rgdal)
 library(rgeos)
-library(tmap)
+
+
 
 # data --------------------------------------------------------------------
-# 1. Biome polygons
-olson_biomes <- shapefile("./data/wwf_olson/tnc_terr_ecoregions.shp")
-
-# 2. Read bioclim variables 
-setwd("./data/Bioclim_v2/")
+# Read bioclim variables 
+setwd("./data/Spatial_data/Bioclim_v2/")
 brk <- do.call(brick, lapply(list.files(path = "./", pattern = "*tif"), raster))
-setwd("../../")
+setwd("../../../")
 
+
+# ****************************************
+# 1. Olson and Geiger classification ----
+# *****************************************
+
+# Biome polygons
+olson_biomes <- shapefile("./data/Spatial_data/wwf_olson/tnc_terr_ecoregions.shp")
 
 # Crop the new world ------------------------------------------------------
 inx<-which(olson_biomes$WWF_REALM2=="Nearctic" | olson_biomes$WWF_REALM2=="Neotropic")
 biome_NW<-olson_biomes[inx,]
 
 
-# Dissolving Ecoregion polygons -------------------------------------------
+# 1.2 Aggregating biomes levels  -------------------------
 # Ensure shapefile row.names and polygon IDs are sensible
 row.names(biome_NW) <- row.names(biome_NW@data)
 biome_NW <- spChFIDs(biome_NW, row.names(biome_NW))
@@ -64,7 +69,7 @@ biome_poly_sub$biomes<-droplevels(biome_poly_sub$biomes)
 spplot(biome_poly_sub)
 
 # Crop raster and polygons -------------------------------------------------------
-e <- extent(-175,-22,-56,83)
+e <- extent(-175,-22,-56,74)
 
 biome_poly<-crop(biome_poly_sub,e)
 bioclim_ly<- do.call(crop, c(brk,e))
@@ -94,3 +99,49 @@ colnames(Biomes_clim_df)[22]<-"Biomes"
 
 # Writing csv file --------------------------------------------------------
 saveRDS(Biomes_clim_df,"./data/01_Biome_class.rds")
+
+# ****************************************
+# 2. Koppen and Geiger classification ----
+# *****************************************
+Koppen_Geiger <- shapefile("./data/Spatial_data/1976-2000_GIS/1976-2000.shp")
+
+# Crop the new world ------------------------------------------------------
+e <- extent(-175,-22,-56,74)
+KP_NW<-crop(Koppen_Geiger, e)
+
+clim_class <- read.csv("data/Spatial_data/1976-2000_GIS/Clim_class.csv")
+KP_NW$GRIDCODE <- clim_class$Class[as.factor(KP_NW$GRIDCODE)]
+
+
+## 2.1 Aggregating climatic levels ----
+KP_NW$GRIDCODE <- as.character(KP_NW$GRIDCODE)
+
+## Wet forest
+clim_get1 <- "Af|Am"
+KP_NW$GRIDCODE[grep(clim_get1,KP_NW$GRIDCODE)] <- "AWet"
+
+## Dry forest
+clim_get2 <- "As|Aw"
+KP_NW$GRIDCODE[grep(clim_get2,KP_NW$GRIDCODE)] <- "ADry"
+
+# Xeric 
+KP_NW$GRIDCODE[grep("B",KP_NW$GRIDCODE)] <- "B"
+
+# Temperate and Cold
+clim_get3 <- "^C|^D"
+KP_NW$GRIDCODE[grep(clim_get3,KP_NW$GRIDCODE)] <- "CD"
+
+
+
+# Extract the data I want (the larger geography)
+KP_poly <- gUnaryUnion(KP_NW, id = KP_NW@data$GRIDCODE)
+
+# And add the data back in
+lu<-row.names(KP_poly)
+lu <- as.data.frame(lu)
+colnames(lu) <- "KP_class" 
+row.names(lu)<-lu$KP_class
+
+KP_poly <- SpatialPolygonsDataFrame(KP_poly, lu)
+spplot(KP_poly)
+
